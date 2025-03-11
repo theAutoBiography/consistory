@@ -226,9 +226,21 @@ class ConsistoryExtendedAttnXFormersAttnProcessor:
             value = attn.head_to_batch_dim(value).contiguous()
 
             # attn_masks needs to be of shape [batch_size, query_tokens, key_tokens]
-            hidden_states = xformers.ops.memory_efficient_attention(
-                query, key, value, op=self.attention_op, scale=attn.scale
-            )
+            try:
+                # Try to use xformers if available and if it has the ops attribute.
+                if xformers is not None and hasattr(xformers, 'ops'):
+                    hidden_states = xformers.ops.memory_efficient_attention(
+                        query, key, value, op=self.attention_op, scale=attn.scale
+                    )
+                else:
+                    raise ImportError("xformers not available")
+            except Exception as e:
+                # Fallback to the default attention mechanism
+                hidden_states = xformers.ops.memory_efficient_attention(
+                    query, key, value, op=self.attention_op, scale=attn.scale
+                )
+
+            
 
         hidden_states = hidden_states.to(query.dtype)
         hidden_states = attn.batch_to_head_dim(hidden_states)

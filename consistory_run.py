@@ -53,17 +53,22 @@ def create_token_indices(prompts, batch_size, concept_token, tokenizer):
 
 def create_latents(story_pipeline, seed, batch_size, same_latent, device, float_type):
     # if seed is int
+    # Determine the generator device:
+    # If running on CUDA, use 'cuda', otherwise use 'cpu' (e.g., for mps, cpu, etc.)
+    gen_device = "cuda" if device.type == "cuda" else "cpu"
+
     if isinstance(seed, int):
-        g = torch.Generator('cuda').manual_seed(seed)
+        g = torch.Generator(gen_device).manual_seed(seed)
         shape = (batch_size, story_pipeline.unet.config.in_channels, 128, 128)
         latents = randn_tensor(shape, generator=g, device=device, dtype=float_type)
     elif isinstance(seed, list):
         shape = (batch_size, story_pipeline.unet.config.in_channels, 128, 128)
         latents = torch.empty(shape, device=device, dtype=float_type)
         for i, seed_i in enumerate(seed):
-            g = torch.Generator('cuda').manual_seed(seed_i)
+            g = torch.Generator(gen_device).manual_seed(seed_i)
             curr_latent = randn_tensor(shape, generator=g, device=device, dtype=float_type)
             latents[i] = curr_latent[i]
+
 
     if same_latent:
         latents = latents[:1].repeat(batch_size, 1, 1, 1)
